@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blink — Live Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+        .row { display:flex; align-items:center; gap:12px; }
+        .pill { padding: 6px 10px; border-radius: 999px; color: white; font-weight: 600; }
+        .ok { background: #16a34a; }
+        .bad { background: #dc2626; }
+        #chart { width: 100%; max-width: 900px; height: 420px; }
+        .meta { color:#555; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="row">
+        <h2 style="margin:0">Blink — BTC-USD</h2>
+        <span id="pill" class="pill ok">Normal</span>
+        <span class="meta" id="model"></span>
+    </div>
+    <div id="chart"></div>
+
+
+    <script>
+    const pill = document.getElementById('pill');
+    const modelSpan = document.getElementById('model');
+
+
+    const layout = { margin: {l:50,r:10,t:10,b:30}, xaxis: {title:'time'}, yaxis:{title:'price'} };
+    Plotly.newPlot('chart', [{x:[], y:[], mode:'lines', name:'price'}], layout, {displayModeBar:false});
+
+
+    async function fetchData(){
+        const r = await fetch('/demo/data');
+        const data = await r.json();
+        const x = (data.times||[]).map(t=> new Date(t*1000));
+        const y = data.prices||[];
+        Plotly.react('chart', [{x, y, mode:'lines', name:'price'}], layout, {displayModeBar:false});
+        if (data.anomaly === true){
+            pill.textContent = 'Anomaly'; pill.className = 'pill bad';
+        } else if (data.anomaly === false){
+            pill.textContent = 'Normal'; pill.className = 'pill ok';
+        } else {
+            pill.textContent = 'Warming up…'; pill.className = 'pill ok';
+        }
+        modelSpan.textContent = data.score !== null ? `score=${data.score?.toFixed?.(3)}` : '';
+        }
+
+    fetchData();
+    setInterval(fetchData, 2000);
+    </script>
+</body>
+</html>

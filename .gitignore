@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# ignore vscode files
+.vscode/*
+
+
+# Virtual environments
+.venv
+
+# Runtime files
+mlruns/
