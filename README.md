@@ -5,7 +5,7 @@ Blink ingests live trades from Coinbase, computes rolling price features, trains
 
 DISCLAIMER: Blink is a practice project for learning. Take code from here at your own discretion and be aware of risks.
 
-The techniques used to train a the model are not industry standard (they are here as a placeholder). Much more planning goes into creating and training a model. I personally like this [guide](https://madewithml.com/)
+The techniques used to train the model are not industry standard (they are here as a placeholder). Much more planning goes into creating and training a model. I personally like this [guide](https://madewithml.com/)
 
 
 Overview
