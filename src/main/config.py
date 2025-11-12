@@ -1,9 +1,6 @@
 import os
 
 
-def _bool(v): return str(v).lower() in {"1", "true", "yes", "y", "on"}
-
-
 def required(name: str) -> str:
     v = os.getenv(name)
     if not v:
@@ -23,4 +20,4 @@ REDIS_HOST = required("REDIS_HOST")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOG_FORMAT = os.getenv("LOG_FORMAT", "plain")  # plain | json
 SERVICE_NAME = os.getenv("SERVICE_NAME", "app")
-REQUEST_LOGS = _bool(os.getenv("REQUEST_LOGS", "true"))
+REQUEST_LOGS = os.getenv("REQUEST_LOGS", "true")
