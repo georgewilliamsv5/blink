@@ -40,14 +40,24 @@ services:
     depends_on: [postgres, redis, mlflow]
     logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
-
-  ingestor:
+  sampler:
     build: .
     env_file: [ env/template-dev.env ]
-    environment: { SERVICE_NAME: ingestor }
-    command: ["uv", "run", "python", "-m", "src.main.ingestor"]
+    environment: { SERVICE_NAME: sampler }
+    command: ["uv", "run", "python", "-m", "src.main.sampler"]
+    volumes: ["./data:/app/data:ro"]
     depends_on: [postgres]
     logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+
+  # For local development purposes only
+  # ingestor:
+  #   build: .
+  #   env_file: [ env/template-dev.env ]
+  #   environment: { SERVICE_NAME: ingestor }
+  #   command: ["uv", "run", "python", "-m", "src.main.ingestor"]
+  #   depends_on: [postgres]
+  #   logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
 
   features:

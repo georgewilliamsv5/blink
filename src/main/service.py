@@ -1,3 +1,4 @@
+import os
 import time
 import mlflow
 import numpy as np
@@ -19,6 +20,8 @@ log = get_logger("api")
 FEATURES = FEATURE_KEYS
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+INGEST_MODE = os.getenv("INGEST_MODE", "False")
+
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="web"), name="static")
@@ -89,7 +92,8 @@ def metrics():
 @LATENCY.time()
 def score():
     PRED_COUNT.inc()
-    feats = r.hgetall("latest_features")
+    feats = r.hgetall("latest_features") if INGEST_MODE == "live" else r.hgetall(
+        "sampler_features")
     if not feats:
         log.warning("no_features")
         return {"ready": False, "reason": "no_features"}

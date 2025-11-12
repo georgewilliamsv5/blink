@@ -1,9 +1,7 @@
 import json
 import logging
-import os
 import sys
 import time
-from typing import Any, Mapping
 from .config import LOG_LEVEL, LOG_FORMAT, SERVICE_NAME
 
 

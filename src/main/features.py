@@ -1,16 +1,19 @@
+import os
 import time
 import pandas as pd
 from sqlalchemy import text
 import redis
 from .storage import engine
 from .config import REDIS_HOST
+from .logging_utils import get_logger
+
+log = get_logger("features")
 
 
 r = redis.Redis(host=REDIS_HOST, decode_responses=True)
 
+INGEST_MODE = os.getenv("INGEST_MODE")
 MIN_FEATURES_ROWS = 90
-
-
 FEATURE_KEYS = ["ret_1s", "ret_5s", "ret_30s", "ewma_30s", "vol_60s", "z_30s"]
 
 
@@ -41,7 +44,35 @@ def materialize_once():
         return True
 
 
+def materialize_sample():
+    with engine.begin() as conn:
+        df = pd.read_sql_query(
+            text("select ts, price from trades order by ts"), conn
+        )
+        if len(df) < MIN_FEATURES_ROWS:
+            log.debug("not enough rows for sample features",
+                      extra={"rows": len(df)})
+            return False
+        feats = compute_features(df)
+        r.hset("sampler_features", mapping={
+               k: str(v) for k, v in feats.items()})
+        r.expire("sampler_features", 60)
+        return True
+
+
 if __name__ == "__main__":
-    while True:
-        ok = materialize_once()
-        time.sleep(5 if ok else 2)
+    if INGEST_MODE == "sample":
+        log.info("feature materializer running in SAMPLE mode")
+        ok = materialize_sample()
+        if ok:
+            log.info("materialized features")
+        else:
+            log.info("not enough data to materialize features yet")
+    else:
+        while True:
+            ok = materialize_once()
+            if ok:
+                log.info("materialized features")
+            else:
+                log.info("not enough data to materialize features yet")
+            time.sleep(5 if ok else 2)
