@@ -10,8 +10,14 @@ from .logging_utils import get_logger
 log = get_logger("features")
 REDIS_PORT = 6378
 
-r = redis.Redis(host=REDIS_HOST, decode_responses=True, port=REDIS_PORT)
-
+r = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    ssl=True,
+    ssl_cert_reqs="required",
+    ssl_ca_certs="redis-ca.pem",
+    decode_responses=True,
+)
 INGEST_MODE = os.getenv("INGEST_MODE")
 MIN_FEATURES_ROWS = 90
 FEATURE_KEYS = ["ret_1s", "ret_5s", "ret_30s", "ewma_30s", "vol_60s", "z_30s"]

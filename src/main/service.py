@@ -28,7 +28,14 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="web"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
-r = redis.Redis(host=REDIS_HOST, decode_responses=True, port=REDIS_PORT)
+r = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    ssl=True,
+    ssl_cert_reqs="required",
+    ssl_ca_certs="redis-ca.pem",
+    decode_responses=True,
+)
 PRED_COUNT = Counter("blink_predictions_total", "Total predictions served")
 LATENCY = Histogram("blink_predict_latency_seconds", "Prediction latency")
 _model = None
