@@ -6,8 +6,10 @@ import redis
 from .storage import engine
 from .config import REDIS_HOST
 from .logging_utils import get_logger
+from .redis_utils import ensure_ca_cert
 
 log = get_logger("features")
+cert_path = ensure_ca_cert()
 REDIS_PORT = 6378
 
 r = redis.Redis(
@@ -15,7 +17,7 @@ r = redis.Redis(
     port=REDIS_PORT,
     ssl=True,
     ssl_cert_reqs="required",
-    ssl_ca_certs="redis-ca.pem",
+    ssl_ca_certs=cert_path,
     decode_responses=True,
 )
 INGEST_MODE = os.getenv("INGEST_MODE")

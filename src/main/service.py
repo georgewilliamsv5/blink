@@ -14,6 +14,7 @@ from .config import MODEL_NAME, REDIS_HOST, MLFLOW_TRACKING_URI, REQUEST_LOGS
 from .features import FEATURE_KEYS
 from .logging_utils import get_logger, setup_logging
 from .storage import engine
+from .redis_utils import ensure_ca_cert
 
 
 log = get_logger("api")
@@ -21,19 +22,21 @@ FEATURES = FEATURE_KEYS
 REDIS_PORT = 6378
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-INGEST_MODE = os.getenv("INGEST_MODE", "False")
+INGEST_MODE = os.getenv("INGEST_MODE", "False") in ("1", "true", "True")
 
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="web"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
+cert_path = ensure_ca_cert()
+
 r = redis.Redis(
     host=REDIS_HOST,
     port=REDIS_PORT,
     ssl=True,
     ssl_cert_reqs="required",
-    ssl_ca_certs="redis-ca.pem",
+    ssl_ca_certs=cert_path,
     decode_responses=True,
 )
 PRED_COUNT = Counter("blink_predictions_total", "Total predictions served")
