@@ -18,6 +18,7 @@ from .storage import engine
 
 log = get_logger("api")
 FEATURES = FEATURE_KEYS
+REDIS_PORT = 6378
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 INGEST_MODE = os.getenv("INGEST_MODE", "False")
@@ -27,7 +28,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="web"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
-r = redis.Redis(host=REDIS_HOST, decode_responses=True)
+r = redis.Redis(host=REDIS_HOST, decode_responses=True, port=REDIS_PORT)
 PRED_COUNT = Counter("blink_predictions_total", "Total predictions served")
 LATENCY = Histogram("blink_predict_latency_seconds", "Prediction latency")
 _model = None

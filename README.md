@@ -191,3 +191,17 @@ Road map (TODOs for future practice)
 - Consider a lightweight job to persist features to Postgres for reproducibility of training, or compute features in trainer to avoid drift (currently duplicated logic but consistent).
 - Add more unit tests for each service
 - Address the Memory overcommit issue on redis startup
+
+
+
+How to deploy to GCP:
+--------------
+
+1. Create a free GCP account
+2. Create a Cloud SQL Instance + DB + user
+  - `gcloud sql instances create blink-pg --database-version=POSTGRES_15 --region=us-central1 --cpu=2 --memory=4GiB --availability-type=ZONAL`
+  - `gcloud sql databases create blink --instance=blink-pg`
+  - `gcloud sql users create appuser --instance=blink-pg --password "STRONG_PASSWORD"`
+
+3. TODO: Finish guide
+

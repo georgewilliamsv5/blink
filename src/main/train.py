@@ -82,5 +82,8 @@ def train_once():
 if __name__ == "__main__":
     log.info("trainer started", extra={"mode": INGEST_MODE})
     while True:
-        train_once()
-        time.sleep(3600)
+        ok = train_once()
+        if ok:
+            log.info("trainer shutting down)", extra={})
+            break
+        exit()  # purposely exit instead of sleep while testing GCP deployments

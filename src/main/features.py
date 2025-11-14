@@ -8,9 +8,9 @@ from .config import REDIS_HOST
 from .logging_utils import get_logger
 
 log = get_logger("features")
+REDIS_PORT = 6378
 
-
-r = redis.Redis(host=REDIS_HOST, decode_responses=True)
+r = redis.Redis(host=REDIS_HOST, decode_responses=True, port=REDIS_PORT)
 
 INGEST_MODE = os.getenv("INGEST_MODE")
 MIN_FEATURES_ROWS = 90
