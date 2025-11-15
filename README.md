@@ -197,19 +197,19 @@ Setup steps:
 
 | Variable | Example | Purpose |
 | -------- | ------- | ------- |
-| `GCP_PROJECT_ID` | Target project id |
-| `GCP_REGION` | Region for Artifact Registry + Cloud Run |
+| `GCP_PROJECT_ID` | `YOUR_PROJECT_ID`| Target project id |
+| `GCP_REGION` | `YOUR_REGION`| Region for Artifact Registry + Cloud Run |
 | `GCP_ARTIFACT_REPO` | `blink` | Artifact Registry repo name |
-| `CLOUD_RUN_CONNECTOR` | Serverless VPC Access connector |
-| `CLOUD_SQL_INSTANCE` |  Cloud SQL instance connection name |
+| `CLOUD_RUN_CONNECTOR` | `YOUR_SERVERLESS_VPC_CONNECTOR` | Serverless VPC Access connector |
+| `CLOUD_SQL_INSTANCE` | `YOUR_CLOUD_SQL_INSTANCE` | Cloud SQL instance connection name |
 | `PG_SECRET_NAME` | `blink-app-password` | Name of the Secret Manager secret that stores the DB password |
 | `MODEL_NAME` | `blink_iforest` | MLflow registry model to load |
 | `PAIR` | `BTC-USD` | Coinbase pair label surfaced by the API |
 | `INGEST_MODE` | `sample` | Keeps every service aligned with the sampler data source |
-| `REDIS_HOST` | Memorystore host IP |
-| `REDIS_CA_GCS_URI` | GCS object path for the Redis CA certificate |
+| `REDIS_HOST` | `YOUR_HOST`| Memorystore host IP |
+| `REDIS_CA_GCS_URI` | `YOUR_REDIS_CA_URI` | GCS object path for the Redis CA certificate |
 | `REDIS_CA_PATH` | `/tmp/redis-ca.pem` | Local path where the CA cert should be downloaded |
-| `MLFLOW_TRACKING_URI` | Tracking server URL for trainer + API |
+| `MLFLOW_TRACKING_URI` | `YOUR_MLFLOW_TRACKING_URI`| Tracking server URL for trainer + API |
 
 Once those values are in place, every push to `main` (or a manual **Run workflow** on any branch via the workflow dispatch input) automatically:
 1. Builds and pushes `ghcr.io/.../blink:${{ github.sha }}`.
