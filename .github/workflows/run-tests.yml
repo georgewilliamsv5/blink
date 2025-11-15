@@ -4,7 +4,11 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '**.sh'
+      - .github/workflows/**.yml'
+
 
 jobs:
   test:

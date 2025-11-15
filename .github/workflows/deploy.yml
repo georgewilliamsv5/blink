@@ -1,0 +1,118 @@
+name: Deploy Blink
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch or tag to deploy"
+        required: true
+        type: choice
+        options:
+          - main
+          - gcp-staging-setup
+      run-tests:
+        description: "Run tests?"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  ARTIFACT_REPO: ${{ vars.GCP_ARTIFACT_REPO }}
+  CLOUD_RUN_CONNECTOR: ${{ vars.CLOUD_RUN_CONNECTOR }}
+  CLOUD_SQL_INSTANCE: ${{ vars.CLOUD_SQL_INSTANCE }}
+  PG_SECRET_NAME: ${{ vars.PG_SECRET_NAME }}
+  MODEL_NAME: ${{ vars.MODEL_NAME }}
+  PAIR: ${{ vars.PAIR }}
+  INGEST_MODE: ${{ vars.INGEST_MODE }}
+  REDIS_HOST: ${{ vars.REDIS_HOST }}
+  REDIS_CA_GCS_URI: ${{ vars.REDIS_CA_GCS_URI }}
+  REDIS_CA_PATH: ${{ vars.REDIS_CA_PATH }}
+  MLFLOW_TRACKING_URI: ${{ vars.MLFLOW_TRACKING_URI }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          set -euo pipefail
+          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/blink:${GITHUB_SHA}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy Cloud Run Blink API
+        run: |
+          set -euo pipefail
+          gcloud run deploy blink-api \
+            --image="$IMAGE" \
+            --region="${{ env.GCP_REGION }}" \
+            --port=8080 \
+            --command=uv \
+            --args="run","uvicorn","src.main.service:app","--host","0.0.0.0","--port","8080" \
+            --set-env-vars="PAIR=${{ env.PAIR }},MODEL_NAME=${{ env.MODEL_NAME }},INGEST_MODE=${{ env.INGEST_MODE }},REDIS_HOST=${{ env.REDIS_HOST }},MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }},PG_DSN=postgresql+psycopg2://appuser@/blink?host=/cloudsql/${{ env.CLOUD_SQL_INSTANCE }},LOG_LEVEL=INFO,LOG_FORMAT=plain,REQUEST_LOGS=true,REDIS_CA_GCS_URI=${{ env.REDIS_CA_GCS_URI }},REDIS_CA_PATH=${{ env.REDIS_CA_PATH }}" \
+            --set-secrets=PGPASSWORD=${{ env.PG_SECRET_NAME }}:latest \
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+            --vpc-connector=${{ env.CLOUD_RUN_CONNECTOR }} \
+            --vpc-egress=all \
+            --allow-unauthenticated
+
+      - name: Upsert features job
+        run: |
+          set -euo pipefail
+          BASE_ARGS="--image=$IMAGE \
+            --region=${{ env.GCP_REGION }} \
+            --command=uv \
+            --args=run,python,-m,src.main.features \
+            --set-env-vars=PAIR=${{ env.PAIR }},MODEL_NAME=${{ env.MODEL_NAME }},INGEST_MODE=${{ env.INGEST_MODE }},REDIS_HOST=${{ env.REDIS_HOST }},MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }},PG_DSN=postgresql+psycopg2://appuser@/blink?host=/cloudsql/${{ env.CLOUD_SQL_INSTANCE }},LOG_LEVEL=INFO,LOG_FORMAT=plain,REQUEST_LOGS=true,REDIS_CA_GCS_URI=${{ env.REDIS_CA_GCS_URI }},REDIS_CA_PATH=${{ env.REDIS_CA_PATH }} \
+            --set-secrets=PGPASSWORD=${{ env.PG_SECRET_NAME }}:latest \
+            --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+            --vpc-connector=${{ env.CLOUD_RUN_CONNECTOR }} \
+            --vpc-egress=all"
+          if gcloud run jobs describe blink-features --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+            gcloud run jobs update blink-features $BASE_ARGS
+          else
+            gcloud run jobs create blink-features $BASE_ARGS
+          fi
+
+      - name: Upsert trainer job
+        run: |
+          set -euo pipefail
+          BASE_ARGS="--image=$IMAGE \
+            --region=${{ env.GCP_REGION }} \
+            --command=uv \
+            --args=run,python,-m,src.main.train \
+            --set-env-vars=PAIR=${{ env.PAIR }},MODEL_NAME=${{ env.MODEL_NAME }},INGEST_MODE=${{ env.INGEST_MODE }},REDIS_HOST=${{ env.REDIS_HOST }},MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }},PG_DSN=postgresql+psycopg2://appuser@/blink?host=/cloudsql/${{ env.CLOUD_SQL_INSTANCE }},LOG_LEVEL=INFO,LOG_FORMAT=plain,REQUEST_LOGS=true,REDIS_CA_GCS_URI=${{ env.REDIS_CA_GCS_URI }},REDIS_CA_PATH=${{ env.REDIS_CA_PATH }} \
+            --set-secrets=PGPASSWORD=${{ env.PG_SECRET_NAME }}:latest \
+            --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+            --vpc-connector=${{ env.CLOUD_RUN_CONNECTOR }} \
+            --vpc-egress=all"
+          if gcloud run jobs describe blink-trainer --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+            gcloud run jobs update blink-trainer $BASE_ARGS
+          else
+            gcloud run jobs create blink-trainer $BASE_ARGS
+          fi
+
+      - name: Execute features job
+        run: gcloud run jobs execute blink-features --region=${{ env.GCP_REGION }}
