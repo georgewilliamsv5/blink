@@ -32,7 +32,13 @@ env:
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
 
 jobs:
+  tests:
+    if: ${{ github.event.inputs.run-tests == 'true' }}
+    uses: ./.github/workflows/run-tests.yml
+
   deploy:
+    needs: tests
+    if: ${{ github.event.inputs.run-tests != 'true' || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,7 +61,7 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Configure Artifact Registry auth
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet
 
       - name: Build and push image
         run: |

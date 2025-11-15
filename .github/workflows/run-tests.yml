@@ -8,6 +8,7 @@ on:
       - '**.md'
       - '**.sh'
       - .github/workflows/**.yml'
+  workflow_call:
 
 
 jobs:
@@ -39,4 +40,3 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
-
