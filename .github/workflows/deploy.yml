@@ -12,9 +12,12 @@ on:
           - gcp-staging-setup
       run-tests:
         description: "Run tests?"
-        required: false
-        default: true
-        type: boolean
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -33,12 +36,12 @@ env:
 
 jobs:
   tests:
-    if: ${{ github.event.inputs.run-tests != 'false' }}
+    if: ${{ github.event.inputs.run-tests == 'true' }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
     needs: [tests]
-    if: ${{ needs.tests.result == 'success' || needs.tests.result == 'skipped' }}
+    if: ${{ github.event.inputs.run-tests == 'false' || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
