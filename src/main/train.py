@@ -1,3 +1,5 @@
+
+import os
 import time
 import pandas as pd
 from sqlalchemy import text
@@ -6,15 +8,37 @@ from sklearn.ensemble import IsolationForest
 import mlflow
 import mlflow.sklearn
 from .config import MODEL_NAME, MLFLOW_TRACKING_URI
+from .logging_utils import get_logger
 
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment("blink")
 
+INGEST_MODE = os.getenv("INGEST_MODE")
+
+log = get_logger("trainer")
+
 MIN_ROWS_TO_TRAIN = 200
 
 
 FEATURES = ["ret_1s", "ret_5s", "ret_30s", "ewma_30s", "vol_60s", "z_30s"]
+
+
+def load_sample_df():
+    with engine.begin() as conn:
+        df = pd.read_sql_query(
+            text("select ts, price from trades order by ts"), conn
+        )
+        df = df.set_index("ts").sort_index()
+        df["ret_1s"] = df["price"].pct_change(1)
+        df["ret_5s"] = df["price"].pct_change(5)
+        df["ret_30s"] = df["price"].pct_change(30)
+        df["ewma_30s"] = df["price"].ewm(span=30, adjust=False).mean()
+        df["vol_60s"] = df["ret_1s"].rolling(60).std()
+        df["z_30s"] = (df["price"] - df["price"].rolling(30).mean()) / \
+            (df["price"].rolling(30).std() + 1e-9)
+        X = df[FEATURES].dropna()
+        return X
 
 
 def load_training_df(hours=12):
@@ -37,7 +61,7 @@ def load_training_df(hours=12):
 
 
 def train_once():
-    X = load_training_df()
+    X = load_training_df() if INGEST_MODE == "live" else load_sample_df()
     if X is None or X.empty:
         print("[trainer] not enough data yet; waiting…")
         return False
@@ -56,6 +80,10 @@ def train_once():
 
 
 if __name__ == "__main__":
+    log.info("trainer started", extra={"mode": INGEST_MODE})
     while True:
-        train_once()
-        time.sleep(3600)
+        ok = train_once()
+        if ok:
+            log.info("trainer shutting down)", extra={})
+            break
+        exit()  # purposely exit instead of sleep while testing GCP deployments

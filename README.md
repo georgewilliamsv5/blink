@@ -183,6 +183,42 @@ Project layout
 - `docker-compose.yml` — Dev stack for local run.
 - `Dockerfile` — Image used by services.
 
+GitHub Actions deploys
+----------------------
+The workflow in `.github/workflows/deploy.yml` builds the container, pushes it to Artifact Registry, rolls out the `blink-api` Cloud Run service, keeps the `blink-features` and `blink-trainer` jobs in sync, and executes the features job once to refresh Redis. It runs on every push to `main` (and can be triggered manually via **Actions → Deploy Blink → Run workflow**).
+
+Setup steps:
+1. **Service account** — Create a GCP service account dedicated to CI/CD and grant it:
+   `roles/run.admin`, `roles/iam.serviceAccountUser`, `roles/artifactregistry.writer`,
+   `roles/storage.objectViewer`, `roles/secretmanager.secretAccessor`, and `roles/cloudsql.client`.
+   (Add additional roles if your deployment requires them.)
+2. **GitHub secret** — Add `GCP_SA_KEY` containing the JSON key for that service account.
+3. **GitHub variables** — Add the following repository “Variables” so the workflow knows where to deploy:
+
+| Variable | Example | Purpose |
+| -------- | ------- | ------- |
+| `GCP_PROJECT_ID` | `YOUR_PROJECT_ID`| Target project id |
+| `GCP_REGION` | `YOUR_REGION`| Region for Artifact Registry + Cloud Run |
+| `GCP_ARTIFACT_REPO` | `blink` | Artifact Registry repo name |
+| `CLOUD_RUN_CONNECTOR` | `YOUR_SERVERLESS_VPC_CONNECTOR` | Serverless VPC Access connector |
+| `CLOUD_SQL_INSTANCE` | `YOUR_CLOUD_SQL_INSTANCE` | Cloud SQL instance connection name |
+| `PG_SECRET_NAME` | `blink-app-password` | Name of the Secret Manager secret that stores the DB password |
+| `MODEL_NAME` | `blink_iforest` | MLflow registry model to load |
+| `PAIR` | `BTC-USD` | Coinbase pair label surfaced by the API |
+| `INGEST_MODE` | `sample` | Keeps every service aligned with the sampler data source |
+| `REDIS_HOST` | `YOUR_HOST`| Memorystore host IP |
+| `REDIS_CA_GCS_URI` | `YOUR_REDIS_CA_URI` | GCS object path for the Redis CA certificate |
+| `REDIS_CA_PATH` | `/tmp/redis-ca.pem` | Local path where the CA cert should be downloaded |
+| `MLFLOW_TRACKING_URI` | `YOUR_MLFLOW_TRACKING_URI`| Tracking server URL for trainer + API |
+
+Once those values are in place, every push to `main` (or a manual **Run workflow** on any branch via the workflow dispatch input) automatically:
+1. Builds and pushes `ghcr.io/.../blink:${{ github.sha }}`.
+2. Deploys the FastAPI Cloud Run service with the latest image/env.
+3. Creates or updates the `blink-features` and `blink-trainer` Cloud Run jobs (and runs the features job once).
+4. Leaves the trainer job ready for manual execution (`gcloud run jobs execute blink-trainer`) or a Cloud Scheduler trigger.
+
+For manual redeploys (e.g., hotfixes), go to the **Deploy Blink** workflow in GitHub Actions and click **Run workflow**.
+
 
 Road map (TODOs for future practice)
 --------------
@@ -191,3 +227,16 @@ Road map (TODOs for future practice)
 - Consider a lightweight job to persist features to Postgres for reproducibility of training, or compute features in trainer to avoid drift (currently duplicated logic but consistent).
 - Add more unit tests for each service
 - Address the Memory overcommit issue on redis startup
+
+
+
+How to deploy to GCP:
+--------------
+
+1. Create a free GCP account
+2. Create a Cloud SQL Instance + DB + user
+  - `gcloud sql instances create blink-pg --database-version=POSTGRES_15 --region=YOUR_REGION --cpu=2 --memory=4GiB --availability-type=ZONAL`
+  - `gcloud sql databases create blink --instance=blink-pg`
+  - `gcloud sql users create YOUR_USER --instance=blink-pg --password "STRONG_PASSWORD"`
+
+3. TODO: Polish and finish guide

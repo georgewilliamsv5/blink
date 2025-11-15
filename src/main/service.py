@@ -1,3 +1,4 @@
+import os
 import time
 import mlflow
 import numpy as np
@@ -13,18 +14,31 @@ from .config import MODEL_NAME, REDIS_HOST, MLFLOW_TRACKING_URI, REQUEST_LOGS
 from .features import FEATURE_KEYS
 from .logging_utils import get_logger, setup_logging
 from .storage import engine
+from .redis_utils import ensure_ca_cert
 
 
 log = get_logger("api")
 FEATURES = FEATURE_KEYS
+REDIS_PORT = 6378
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+INGEST_MODE = os.getenv("INGEST_MODE", "False") in ("1", "true", "True")
+
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="web"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
-r = redis.Redis(host=REDIS_HOST, decode_responses=True)
+cert_path = ensure_ca_cert()
+
+r = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    ssl=True,
+    ssl_cert_reqs="required",
+    ssl_ca_certs=cert_path,
+    decode_responses=True,
+)
 PRED_COUNT = Counter("blink_predictions_total", "Total predictions served")
 LATENCY = Histogram("blink_predict_latency_seconds", "Prediction latency")
 _model = None
@@ -89,7 +103,8 @@ def metrics():
 @LATENCY.time()
 def score():
     PRED_COUNT.inc()
-    feats = r.hgetall("latest_features")
+    feats = r.hgetall("latest_features") if INGEST_MODE == "live" else r.hgetall(
+        "sampler_features")
     if not feats:
         log.warning("no_features")
         return {"ready": False, "reason": "no_features"}
