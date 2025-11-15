@@ -33,12 +33,12 @@ env:
 
 jobs:
   tests:
-    if: ${{ github.event.inputs.run-tests == 'true' }}
+    if: ${{ github.event.inputs.run-tests != 'false' }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
-    needs: tests
-    if: ${{ github.event.inputs.run-tests != 'true' || needs.tests.result == 'success' }}
+    needs: [tests]
+    if: ${{ needs.tests.result == 'success' || needs.tests.result == 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
