@@ -13,11 +13,11 @@ on:
       run-tests:
         description: "Run tests?"
         required: true
-        default: "true"
+        default: false
         type: choice
         options:
-          - "true"
-          - "false"
+          - true
+          - false
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -36,17 +36,17 @@ env:
 
 jobs:
   tests:
-    if: ${{ github.event.inputs.run-tests == 'true' }}
+    if: ${{ inputs.run-tests == true }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
     needs: [tests]
-    if: ${{ github.event.inputs.run-tests == 'false' || needs.tests.result == 'success' }}
+    if: ${{ inputs.run-tests == false || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref }}
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
