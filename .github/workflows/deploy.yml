@@ -16,33 +16,32 @@ on:
         default: false
         type: boolean
 
-env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ secrets.GCP_REGION }}
-  ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
-  CLOUD_RUN_CONNECTOR: ${{ secrets.CLOUD_RUN_CONNECTOR }}
-  CLOUD_SQL_INSTANCE: ${{ secrets.CLOUD_SQL_INSTANCE }}
-  PG_SECRET_NAME: ${{ secrets.PG_SECRET_NAME }}
-  MODEL_NAME: ${{ vars.MODEL_NAME }}
-  PAIR: ${{ vars.PAIR }}
-  INGEST_MODE: ${{ vars.INGEST_MODE }}
-  REDIS_HOST: ${{ secrets.REDIS_HOST }}
-  REDIS_CA_GCS_URI: ${{ secrets.REDIS_CA_GCS_URI }}
-  REDIS_CA_PATH: ${{ vars.REDIS_CA_PATH }}
-  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-
 jobs:
   tests:
     if: ${{ inputs.run-tests }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
+    environment: deploy-to-gcp-staging
     needs: [tests]
     if: ${{ !inputs.run-tests || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+      CLOUD_RUN_CONNECTOR: ${{ secrets.CLOUD_RUN_CONNECTOR }}
+      CLOUD_SQL_INSTANCE: ${{ secrets.CLOUD_SQL_INSTANCE }}
+      PG_SECRET_NAME: ${{ secrets.PG_SECRET_NAME }}
+      MODEL_NAME: ${{ vars.MODEL_NAME }}
+      PAIR: ${{ vars.PAIR }}
+      INGEST_MODE: ${{ vars.INGEST_MODE }}
+      REDIS_HOST: ${{ secrets.REDIS_HOST }}
+      REDIS_CA_GCS_URI: ${{ secrets.REDIS_CA_GCS_URI }}
+      REDIS_CA_PATH: ${{ vars.REDIS_CA_PATH }}
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
     steps:
       - name: Checkout
@@ -65,7 +64,7 @@ jobs:
           if [ -z "${{ env.GCP_REGION }}" ]; then
             echo "GCP_REGION is EMPTY"
           else
-            echo "GCP_REGION is SET (value will be masked if it's a secret)"
+            echo "GCP_REGION is SET "
           fi
 
       - name: Configure Artifact Registry auth
