@@ -10,7 +10,14 @@ Usage:
 """
 import os
 import sys
-from src.main.redis_utils import ensure_ca_cert
+from pathlib import Path
+
+# Make sure project root is on sys.path so src/ can be imported when running directly.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.main.redis_utils import ensure_ca_cert  # noqa: E402
 
 
 def main() -> int:
