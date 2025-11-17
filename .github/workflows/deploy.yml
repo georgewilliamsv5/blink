@@ -58,14 +58,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
-      
-      - name: DEBUG_GCP_REGION
-        run: |
-          if [ -z "${{ env.GCP_REGION }}" ]; then
-            echo "GCP_REGION is EMPTY"
-          else
-            echo "GCP_REGION is SET "
-          fi
 
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet
