@@ -24,7 +24,7 @@ jobs:
   deploy:
     environment: deploy-to-gcp-staging
     needs: [tests]
-    if: ${{ !inputs.run_tests || needs.tests.result == 'success' }}
+    if: ${{ inputs.run_tests == false || needs.tests.result == 'success' || needs.tests.result == 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
