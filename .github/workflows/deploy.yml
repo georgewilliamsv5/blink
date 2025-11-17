@@ -14,10 +14,7 @@ on:
         description: "Run tests?"
         required: true
         default: false
-        type: choice
-        options:
-          - true
-          - false
+        type: boolean
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -36,12 +33,12 @@ env:
 
 jobs:
   tests:
-    if: ${{ inputs.run-tests == true }}
+    if: ${{ inputs.run-tests }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
     needs: [tests]
-    if: ${{ inputs.run-tests == false || needs.tests.result == 'success' }}
+    if: ${{ !inputs.run-tests || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
