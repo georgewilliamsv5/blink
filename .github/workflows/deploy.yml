@@ -10,21 +10,21 @@ on:
         options:
           - main
           - gcp-staging-setup
-      run-tests:
+      run_tests:
         description: "Run tests?"
         required: true
-        default: false
+        default: true
         type: boolean
 
 jobs:
   tests:
-    if: ${{ inputs.run-tests }}
+    if: ${{ inputs.run_tests }}
     uses: ./.github/workflows/run-tests.yml
 
   deploy:
     environment: deploy-to-gcp-staging
     needs: [tests]
-    if: ${{ !inputs.run-tests || needs.tests.result == 'success' }}
+    if: ${{ !inputs.run_tests || needs.tests.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
